@@ -1,0 +1,32 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+.terraform/
+terraform.tfvars
+
+# Go
+services/api/api
+services/worker/worker
+vendor/
+*.test
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
