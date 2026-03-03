@@ -98,17 +98,6 @@ resource "aws_eks_node_group" "main" {
 }
 
 # EKS Add-ons
-resource "aws_eks_addon" "ebs_csi_driver" {
-  cluster_name                = aws_eks_cluster.main.name
-  addon_name                  = "aws-ebs-csi-driver"
-  addon_version               = data.aws_eks_addon_version.ebs_csi_driver.version
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
-  service_account_role_arn    = var.enable_irsa ? aws_iam_role.ebs_csi_driver[0].arn : null
-
-  tags = var.tags
-}
-
 resource "aws_eks_addon" "coredns" {
   cluster_name                = aws_eks_cluster.main.name
   addon_name                  = "coredns"
@@ -140,12 +129,6 @@ resource "aws_eks_addon" "vpc_cni" {
 }
 
 # Data sources for addon versions
-data "aws_eks_addon_version" "ebs_csi_driver" {
-  addon_name         = "aws-ebs-csi-driver"
-  kubernetes_version = aws_eks_cluster.main.version
-  most_recent        = true
-}
-
 data "aws_eks_addon_version" "coredns" {
   addon_name         = "coredns"
   kubernetes_version = aws_eks_cluster.main.version
@@ -162,38 +145,6 @@ data "aws_eks_addon_version" "vpc_cni" {
   addon_name         = "vpc-cni"
   kubernetes_version = aws_eks_cluster.main.version
   most_recent        = true
-}
-
-# IAM Role for EBS CSI Driver
-resource "aws_iam_role" "ebs_csi_driver" {
-  count = var.enable_irsa ? 1 : 0
-  name = "${var.cluster_name}-ebs-csi-driver"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Effect = "Allow"
-        Condition = {
-          StringEquals = {
-            "${replace(aws_iam_openid_connect_provider.eks_oidc[0].url, "https://", "")}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
-          }
-        }
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.eks_oidc[0].arn
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy_attachment" "ebs_csi_driver" {
-  count = var.enable_irsa ? 1 : 0
-  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/Amazon_EBS_CSI_DriverPolicy"
-  role       = aws_iam_role.ebs_csi_driver[0].name
 }
 
 # Security Groups
