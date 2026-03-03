@@ -6,14 +6,23 @@ set -e
 
 echo "HealthMetrics Infrastructure Deployment"
 
-# Check if AWS credentials are configured
-if [ ! -f "$HOME/.aws/credentials" ] && [ -z "$AWS_ACCESS_KEY_ID" ]; then
-    echo "❌ AWS credentials not found!"
-    echo "   Run 'aws configure' first or set AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
-    exit 1
+# Check if AWS SSO is configured and logged in
+AWS_PROFILE="${AWS_PROFILE:-personal}"
+
+if [ ! -f "$HOME/.aws/config" ]; then
+  echo "❌ AWS config not found at $HOME/.aws/config"
+  echo "   Run: aws configure sso --profile $AWS_PROFILE"
+  exit 1
 fi
 
-echo "✅ AWS credentials found"
+# Ensure SSO login is valid (will fail if expired/not logged in)
+if ! aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
+  echo "❌ AWS SSO session not active for profile '$AWS_PROFILE'"
+  echo "   Run: aws sso login --profile $AWS_PROFILE"
+  exit 1
+fi
+
+echo "✅ AWS SSO session active (profile: $AWS_PROFILE)"
 
 # Build deployment container
 echo "Building deployment container..."
@@ -24,6 +33,7 @@ docker run -it --rm \
     --network host \
     --dns 8.8.8.8 \
     --dns 1.1.1.1 \
+    -e AWS_PROFILE="$AWS_PROFILE" \
     -v "$(pwd):/workspace" \
     -v "$HOME/.aws:/root/.aws:ro" \
     healthmetrics-deploy bash
